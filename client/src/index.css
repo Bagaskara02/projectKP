@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+/* Konfigurasi Theme Tailwind v4 */
+@theme {
+  --font-sans: "Poppins", sans-serif;
+}
+
+/* Paksa seluruh body menggunakan font ini */
+body {
+  font-family: "Poppins", sans-serif;
+  background-color: #f8fafc; /* slate-50 */
+}
