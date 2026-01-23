@@ -5,7 +5,7 @@ const DashboardAnggaran = () => {
   const [data, setData] = useState({ nilai_ikpa: 0, realisasi: 0, periode: "-" });
 
   useEffect(() => {
-    fetch("http://localhost/simonev-pn/api/kinerja_anggaran.php")
+    fetch("http://localhost/projectKP/api/kinerja_anggaran.php")
       .then((res) => res.json())
       .then((res) => setData(res))
       .catch((err) => console.error(err));
