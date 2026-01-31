@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -6,20 +5,16 @@
 }
 
 body {
-  font-family: "Poppins", sans-serif;
-  /* Warna background utama seperti di gambar (Soft Blue-Grey) */
-  background-color: #F0F2F5; 
-  color: #1e293b;
+  font-family: var(--font-sans);
+  background-color: #f8f9fc;
+  color: #5a5c69;
 }
 
-/* Custom Scrollbar agar rapi */
-::-webkit-scrollbar {
-  width: 8px;
+/* Hidden scrollbar - scrollable but invisible */
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
 }
