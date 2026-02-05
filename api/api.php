@@ -1,10 +1,11 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS");
 header("Content-Type: application/json");
 
-$conn = new mysqli("localhost", "root", "", "simonev_2025");
+require_once __DIR__ . '/db.php';
 
 // Handle OPTIONS preflight
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -32,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
 
     // === Summary endpoint for Dashboard ===
     if ($action == 'summary') {
+        $tahun = getCurrentYear();
         $summaryData = [];
 
         // Perkara indicators (1.x)
@@ -39,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         foreach ($perkaraInd as $ind) {
             $sql = "SELECT COUNT(*) as total, 
                     SUM(CASE WHEN status_akhir IN ('Tepat Waktu','Berhasil','Elektronik') THEN 1 ELSE 0 END) as success
-                    FROM detail_perkara WHERE indikator_id = '$ind'";
+                    FROM detail_perkara WHERE indikator_id = '$ind' AND tahun = $tahun";
             $result = $conn->query($sql);
             $row = $result->fetch_assoc();
             $total = (int) $row['total'];
@@ -49,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         }
 
         // Survei indicator (2.1)
-        $sql = "SELECT AVG(nilai_ikm) as avg_ikm, SUM(jumlah_responden) as total_resp FROM detail_survei WHERE indikator_id = '2.1'";
+        $sql = "SELECT AVG(nilai_ikm) as avg_ikm, SUM(jumlah_responden) as total_resp FROM detail_survei WHERE indikator_id = '2.1' AND tahun = $tahun";
         $result = $conn->query($sql);
         $row = $result->fetch_assoc();
         $ikm = $row['avg_ikm'] ? round($row['avg_ikm'] * 25, 2) : 0;
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         // Nilai indicators (3.x)
         $nilaiInd = ['3.1', '3.2', '3.3', '3.4'];
         foreach ($nilaiInd as $ind) {
-            $sql = "SELECT AVG(nilai_akhir) as avg_score, COUNT(*) as total FROM detail_nilai WHERE indikator_id = '$ind'";
+            $sql = "SELECT AVG(nilai_akhir) as avg_score, COUNT(*) as total FROM detail_nilai WHERE indikator_id = '$ind' AND tahun = $tahun";
             $result = $conn->query($sql);
             $row = $result->fetch_assoc();
             $percentage = $row['avg_score'] ? round($row['avg_score'], 2) : 0;
@@ -80,10 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
 
         if (file_exists($logFile)) {
             $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            $lines = array_reverse($lines); // Get latest first
+            $lines = array_reverse($lines);
 
             foreach ($lines as $line) {
-                // Find last SYNC COMPLETE line
                 if (strpos($line, 'SYNC COMPLETE') !== false) {
                     preg_match('/\[(.*?)\]/', $line, $dateMatch);
                     preg_match('/Total: (\d+), Created: (\d+), Updated: (\d+), Failed: (\d+)/', $line, $statsMatch);
@@ -101,7 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
                     }
                     break;
                 }
-                // Check for errors
                 if (strpos($line, 'ERROR') !== false) {
                     preg_match('/\[(.*?)\]/', $line, $dateMatch);
                     if ($dateMatch)
@@ -117,13 +117,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         exit;
     }
 
+    // === Get available years ===
+    if ($action == 'years') {
+        $years = [];
+        $tables = ['detail_perkara', 'detail_survei', 'detail_nilai'];
+
+        foreach ($tables as $table) {
+            $result = $conn->query("SELECT DISTINCT tahun FROM $table WHERE tahun IS NOT NULL ORDER BY tahun DESC");
+            while ($row = $result->fetch_assoc()) {
+                $years[] = (int) $row['tahun'];
+            }
+        }
+
+        $years = array_unique($years);
+        sort($years);
+        if (empty($years))
+            $years = [date('Y')];
+
+        echo json_encode(["status" => "success", "data" => $years]);
+        exit;
+    }
+
     // === Regular GET for data ===
     $indikator_id = $_GET['id'] ?? '';
     $start_date = $_GET['start_date'] ?? '';
     $end_date = $_GET['end_date'] ?? '';
+    $tahun = getCurrentYear();
 
     $table = getTableName($indikator_id);
-    $sql = "SELECT * FROM $table WHERE indikator_id = '$indikator_id'";
+    $sql = "SELECT * FROM $table WHERE indikator_id = '$indikator_id' AND tahun = $tahun";
 
     // Date filter for perkara
     if ($table == 'detail_perkara' && $start_date && $end_date) {
@@ -156,16 +178,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_GET['action'] ?? '';
     $indikator_id = $input['indikator_id'] ?? '';
     $table = getTableName($indikator_id);
+    $tahun = $input['tahun'] ?? getCurrentYear();
 
     // === DELETE ===
     if ($action == 'delete') {
+        // Check login for delete
+        if (!isLoggedIn()) {
+            echo json_encode(["status" => "error", "message" => "Anda harus login untuk menghapus data"]);
+            exit;
+        }
+
         $id = (int) $input['id'];
-        // Determine table from id - need to check all tables
         $deleted = false;
         foreach (['detail_perkara', 'detail_survei', 'detail_nilai'] as $t) {
-            $result = $conn->query("SELECT id FROM $t WHERE id = $id");
+            $result = $conn->query("SELECT * FROM $t WHERE id = $id");
             if ($result->num_rows > 0) {
+                $oldData = $result->fetch_assoc();
                 $conn->query("DELETE FROM $t WHERE id = $id");
+                logActivity($conn, 'DELETE', $t, $id, $oldData, null);
                 $deleted = true;
                 break;
             }
@@ -176,7 +206,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // === UPDATE ===
     if ($action == 'update') {
+        // Check login for update
+        if (!isLoggedIn()) {
+            echo json_encode(["status" => "error", "message" => "Anda harus login untuk mengubah data"]);
+            exit;
+        }
+
         $id = (int) $input['id'];
+
+        // Get old data for audit
+        $oldResult = $conn->query("SELECT * FROM $table WHERE id = $id");
+        $oldData = $oldResult->fetch_assoc();
 
         if ($table == 'detail_perkara') {
             $nomor = $conn->real_escape_string($input['nomor_perkara'] ?? '');
@@ -187,32 +227,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $waktu = $conn->real_escape_string($input['waktu_proses'] ?? '');
             $status_akhir = $conn->real_escape_string($input['status_akhir'] ?? '');
             $status_teknis = $conn->real_escape_string($input['status_teknis'] ?? '');
+            $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
             $sql = "UPDATE detail_perkara SET 
                     nomor_perkara = '$nomor', klasifikasi = '$klas',
                     tgl_register = $tgl_reg, tgl_sidang_pertama = $tgl_sid, tgl_putus = $tgl_put,
-                    waktu_proses = '$waktu', status_akhir = '$status_akhir', status_teknis = '$status_teknis'
+                    waktu_proses = '$waktu', status_akhir = '$status_akhir', status_teknis = '$status_teknis',
+                    file_path = '$file_path', tahun = $tahun
                     WHERE id = $id";
         } elseif ($table == 'detail_survei') {
             $triwulan = $conn->real_escape_string($input['keterangan'] ?? '');
             $jml_resp = (int) ($input['jumlah_responden'] ?? 0);
             $nilai_ikm = (float) ($input['nilai_ikm'] ?? 0);
             $link = $conn->real_escape_string($input['status_teknis'] ?? '');
+            $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
             $sql = "UPDATE detail_survei SET 
-                    triwulan = '$triwulan', jumlah_responden = $jml_resp, nilai_ikm = $nilai_ikm, link_bukti = '$link'
+                    triwulan = '$triwulan', jumlah_responden = $jml_resp, nilai_ikm = $nilai_ikm, 
+                    link_bukti = '$link', file_path = '$file_path', tahun = $tahun
                     WHERE id = $id";
         } elseif ($table == 'detail_nilai') {
             $ket = $conn->real_escape_string($input['keterangan'] ?? '');
             $nilai = (float) ($input['nilai_akhir'] ?? 0);
             $link = $conn->real_escape_string($input['status_teknis'] ?? '');
+            $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
             $sql = "UPDATE detail_nilai SET 
-                    keterangan = '$ket', nilai_akhir = $nilai, link_bukti = '$link'
+                    keterangan = '$ket', nilai_akhir = $nilai, link_bukti = '$link',
+                    file_path = '$file_path', tahun = $tahun
                     WHERE id = $id";
         }
 
         if ($conn->query($sql)) {
+            logActivity($conn, 'UPDATE', $table, $id, $oldData, $input);
             echo json_encode(["status" => "success"]);
         } else {
             echo json_encode(["status" => "error", "message" => $conn->error]);
@@ -221,6 +268,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     // === INSERT ===
+    // Check login for insert
+    if (!isLoggedIn()) {
+        echo json_encode(["status" => "error", "message" => "Anda harus login untuk menambah data"]);
+        exit;
+    }
+
     if ($table == 'detail_perkara') {
         $nomor = $conn->real_escape_string($input['nomor_perkara'] ?? '');
         $klas = $conn->real_escape_string($input['klasifikasi'] ?? '');
@@ -230,31 +283,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $waktu = $conn->real_escape_string($input['waktu_proses'] ?? '');
         $status_akhir = $conn->real_escape_string($input['status_akhir'] ?? '');
         $status_teknis = $conn->real_escape_string($input['status_teknis'] ?? '');
+        $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
         $sql = "INSERT INTO detail_perkara 
-                (indikator_id, nomor_perkara, klasifikasi, tgl_register, tgl_sidang_pertama, tgl_putus, waktu_proses, status_teknis, status_akhir) 
-                VALUES ('$indikator_id', '$nomor', '$klas', $tgl_reg, $tgl_sid, $tgl_put, '$waktu', '$status_teknis', '$status_akhir')";
+                (indikator_id, tahun, nomor_perkara, klasifikasi, tgl_register, tgl_sidang_pertama, tgl_putus, waktu_proses, status_teknis, status_akhir, file_path) 
+                VALUES ('$indikator_id', $tahun, '$nomor', '$klas', $tgl_reg, $tgl_sid, $tgl_put, '$waktu', '$status_teknis', '$status_akhir', '$file_path')";
     } elseif ($table == 'detail_survei') {
         $triwulan = $conn->real_escape_string($input['keterangan'] ?? 'Triwulan 1');
         $jml_resp = (int) ($input['jumlah_responden'] ?? 0);
         $nilai_ikm = (float) ($input['nilai_ikm'] ?? 0);
         $link = $conn->real_escape_string($input['status_teknis'] ?? '');
+        $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
         $sql = "INSERT INTO detail_survei 
-                (indikator_id, triwulan, jumlah_responden, nilai_ikm, link_bukti) 
-                VALUES ('$indikator_id', '$triwulan', $jml_resp, $nilai_ikm, '$link')";
+                (indikator_id, tahun, triwulan, jumlah_responden, nilai_ikm, link_bukti, file_path) 
+                VALUES ('$indikator_id', $tahun, '$triwulan', $jml_resp, $nilai_ikm, '$link', '$file_path')";
     } elseif ($table == 'detail_nilai') {
         $ket = $conn->real_escape_string($input['keterangan'] ?? '');
         $nilai = (float) ($input['nilai_akhir'] ?? 0);
         $link = $conn->real_escape_string($input['status_teknis'] ?? '');
+        $file_path = $conn->real_escape_string($input['file_path'] ?? '');
 
         $sql = "INSERT INTO detail_nilai 
-                (indikator_id, keterangan, nilai_akhir, link_bukti) 
-                VALUES ('$indikator_id', '$ket', $nilai, '$link')";
+                (indikator_id, tahun, keterangan, nilai_akhir, link_bukti, file_path) 
+                VALUES ('$indikator_id', $tahun, '$ket', $nilai, '$link', '$file_path')";
     }
 
     if ($conn->query($sql)) {
-        echo json_encode(["status" => "success", "new_id" => $conn->insert_id]);
+        $newId = $conn->insert_id;
+        logActivity($conn, 'CREATE', $table, $newId, null, $input);
+        echo json_encode(["status" => "success", "new_id" => $newId]);
     } else {
         echo json_encode(["status" => "error", "message" => $conn->error]);
     }
