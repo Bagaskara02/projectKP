@@ -147,7 +147,9 @@ const indicatorsData = [
         formula: "Hasil Survei Kepuasan Masyarakat (SKM)",
         notes: [
           "Sumber: Lampiran V SK SEKMA 2025 No 2.1",
-          "Berdasarkan 9 unsur layanan (Persyaratan, Prosedur, Waktu, Biaya, dll)."
+          "Berdasarkan 9 unsur layanan (Persyaratan, Prosedur, Waktu, Biaya, dll).",
+          "Peraturan Menteri Pendayagunaan Aparatur Negara dan Reformasi Birokrasi Republik Indonesia Nomor 14 Tahun 2017 tentang Pedoman Penyusunan Survei Kepuasan Masyarakat Unit Penyelengara Pelayanan Publik.",
+          "Nilai Persepsi minimal 3,6 dengan nilai konversi interval IKM Index harus ≥80."
         ]
       }
     ]
@@ -216,7 +218,8 @@ const getIndicatorConfig = (id) => {
 
         case "2.1": // SURVEY
             config.type = "survey";
-            config.cards = ["Jumlah Responden", "Indeks Maksimum", "Nilai IKM", "Konversi Mutu"];
+            config.cards = ["Jumlah Responden", "Indeks Maksimum", "Nilai IKM", "Konversi Interval IKM"];
+            config.tableCols = ["Triwulan", "Jumlah Responden", "Konversi Interval IKM", "IKM", "Link"];
             break;
 
         case "3.1": case "3.2": case "3.3": case "3.4": // SCORE
@@ -247,7 +250,8 @@ const Layout = ({ children }) => {
           <p className="text-[#858796] text-[7.5px] font-bold">Sistem Informasi Monitoring & Evaluasi Kinerja Instansi Pemerintah</p>
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-hidden py-4 px-3">
-          <Link to="/" className="flex items-center text-[#5a5c69] hover:text-[#4e73df] font-bold px-3 py-2 mb-2"><FaHome className="mr-3 text-lg" /> Dashboard</Link>
+          <Link to="/" className="flex items-center text-[#5a5c69] hover:text-[#4e73df] font-bold px-3 py-2 mb-1"><FaHome className="mr-3 text-lg" /> Dashboard</Link>
+          <Link to="/settings" className={`flex items-center hover:text-[#4e73df] font-bold px-3 py-2 mb-2 ${location.pathname === '/settings' ? 'text-[#4e73df]' : 'text-[#5a5c69]'}`}><FaChartPie className="mr-3 text-lg" /> Pengaturan</Link>
           {indicatorsData.map((section, idx) => (
             <div key={idx} className="mb-2">
               <div className="flex items-start px-3 py-2 text-[#4e73df] font-bold text-[10px] uppercase cursor-pointer hover:bg-blue-50 rounded" onClick={() => toggleMenu(idx)}>
@@ -273,7 +277,7 @@ const Layout = ({ children }) => {
             <div className="bg-[#eef2f9] rounded-lg p-3 text-center shadow-sm border border-blue-100">
                 <p className="text-[10px] font-extrabold text-[#4e73df] mb-1">SIMONEV-KIP</p>
                 <div className="text-[8px] text-gray-500 font-medium border-t border-gray-200 pt-2">
-                    Dasar Hukum : <a href="/SK SEKMA 27101 IKU 10 11 2025.pdf" download className="text-[#4e73df] font-bold hover:underline block mt-1 cursor-pointer"><FaDownload size={8} className="inline mr-1"/> SK SEKMA NO. 271 TAHUN 2025</a>
+                    Dasar Hukum : <a href="SK SEKMA 27101 IKU 10 11 2025.pdf" download className="text-[#4e73df] font-bold hover:underline block mt-1 cursor-pointer"><FaDownload size={8} className="inline mr-1"/>SK SEKMA 27101 IKU 10 11 2025</a>
                 </div>
             </div>
         </div>
@@ -637,9 +641,18 @@ const InputDetail = () => {
 
             {config.type === "survey" && (
                 <>
-                    <div><label className="text-xs font-bold text-gray-500">Keterangan</label><input type="text" value={form.keterangan} onChange={e=>setForm({...form, keterangan: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
-                    <div><label className="text-xs font-bold text-gray-500">Jml Responden</label><input type="number" value={form.jumlah_responden} onChange={e=>setForm({...form, jumlah_responden: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
-                    <div><label className="text-xs font-bold text-gray-500">Nilai IKM</label><input type="number" step="0.01" value={form.nilai_ikm} onChange={e=>setForm({...form, nilai_ikm: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500">Triwulan</label>
+                        <select value={form.keterangan} onChange={e=>setForm({...form, keterangan: e.target.value})} className="w-full border rounded px-3 py-2 text-sm bg-white">
+                            <option value="Triwulan 1">Triwulan 1</option>
+                            <option value="Triwulan 2">Triwulan 2</option>
+                            <option value="Triwulan 3">Triwulan 3</option>
+                            <option value="Triwulan 4">Triwulan 4</option>
+                        </select>
+                    </div>
+                    <div><label className="text-xs font-bold text-gray-500">Jumlah Responden</label><input type="number" value={form.jumlah_responden} onChange={e=>setForm({...form, jumlah_responden: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" placeholder="Contoh: 50" /></div>
+                    <div><label className="text-xs font-bold text-gray-500">Nilai IKM</label><input type="number" step="0.0001" value={form.nilai_ikm} onChange={e=>setForm({...form, nilai_ikm: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" placeholder="Contoh: 3.6868" /></div>
+                    <div><label className="text-xs font-bold text-gray-500">Link Bukti</label><input type="text" value={form.status_teknis} onChange={e=>setForm({...form, status_teknis: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" placeholder="https://..." /></div>
                 </>
             )}
 
@@ -683,7 +696,7 @@ const InputDetail = () => {
           <thead className="bg-gray-100 font-bold uppercase border-b-2">
             <tr>
               {config.type === "case" && ["No", ...config.tableCols, "Aksi"].map((h, i) => <th key={i} className="p-3">{h}</th>)}
-              {config.type === "survey" && ["Keterangan", "Responden", "Nilai IKM", "Konversi Mutu", "Aksi"].map((h,i) => <th key={i} className="p-3">{h}</th>)}
+              {config.type === "survey" && ["No", "Triwulan", "Jumlah Responden", "Konversi Interval IKM", "IKM", "Link", "Aksi"].map((h,i) => <th key={i} className="p-3">{h}</th>)}
               {config.type === "score" && ["Keterangan", "Nilai Akhir", "Aksi"].map((h,i) => <th key={i} className="p-3">{h}</th>)}
             </tr>
           </thead>
@@ -707,10 +720,12 @@ const InputDetail = () => {
                         )}
                         {config.type === "survey" && (
                             <>
+                                <td className="p-3 text-center">{indexOfFirstItem + idx + 1}</td>
                                 <td className="p-3">{row.keterangan}</td>
-                                <td className="p-3">{row.jumlah_responden}</td>
-                                <td className="p-3">{row.nilai_ikm}</td>
+                                <td className="p-3">{row.jumlah_responden} Responden</td>
                                 <td className="p-3">{(row.nilai_ikm * 25).toFixed(2)}</td>
+                                <td className="p-3">{parseFloat(row.nilai_ikm).toFixed(4)}</td>
+                                <td className="p-3">{row.status_teknis ? <a href={row.status_teknis} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Lihat</a> : "-"}</td>
                             </>
                         )}
                         {config.type === "score" && (<><td className="p-3">{row.keterangan}</td><td className="p-3">{row.nilai_akhir}</td></>)}
@@ -761,9 +776,18 @@ const InputDetail = () => {
                 )}
                 {config.type === "survey" && (
                   <>
-                    <div><label className="text-xs font-bold text-gray-500">Keterangan</label><input type="text" value={editForm.keterangan || ''} onChange={e=>setEditForm({...editForm, keterangan: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">Triwulan</label>
+                      <select value={editForm.keterangan || ''} onChange={e=>setEditForm({...editForm, keterangan: e.target.value})} className="w-full border rounded px-3 py-2 text-sm bg-white">
+                        <option value="Triwulan 1">Triwulan 1</option>
+                        <option value="Triwulan 2">Triwulan 2</option>
+                        <option value="Triwulan 3">Triwulan 3</option>
+                        <option value="Triwulan 4">Triwulan 4</option>
+                      </select>
+                    </div>
                     <div><label className="text-xs font-bold text-gray-500">Jumlah Responden</label><input type="number" value={editForm.jumlah_responden || ''} onChange={e=>setEditForm({...editForm, jumlah_responden: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
-                    <div><label className="text-xs font-bold text-gray-500">Nilai IKM</label><input type="number" step="0.01" value={editForm.nilai_ikm || ''} onChange={e=>setEditForm({...editForm, nilai_ikm: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
+                    <div><label className="text-xs font-bold text-gray-500">Nilai IKM</label><input type="number" step="0.0001" value={editForm.nilai_ikm || ''} onChange={e=>setEditForm({...editForm, nilai_ikm: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" /></div>
+                    <div><label className="text-xs font-bold text-gray-500">Link Bukti</label><input type="text" value={editForm.status_teknis || ''} onChange={e=>setEditForm({...editForm, status_teknis: e.target.value})} className="w-full border rounded px-3 py-2 text-sm" placeholder="https://..." /></div>
                   </>
                 )}
                 {config.type === "score" && (
@@ -786,7 +810,141 @@ const InputDetail = () => {
 };
 
 // ==========================================
-// 5. ROOT APP
+// 5. SETTINGS PAGE (API Status + Sync Status)
+// ==========================================
+const Settings = () => {
+  const [apiStatus, setApiStatus] = useState('checking');
+  const [lastCheck, setLastCheck] = useState(null);
+  const [syncData, setSyncData] = useState(null);
+
+  const checkApiStatus = async () => {
+    setApiStatus('checking');
+    try {
+      const res = await fetch(`${API_URL}?action=summary`);
+      if (res.ok) {
+        setApiStatus('connected');
+        setLastCheck(new Date().toLocaleString('id-ID'));
+      } else {
+        setApiStatus('error');
+      }
+    } catch {
+      setApiStatus('error');
+    }
+  };
+
+  const fetchSyncStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}?action=sync_status`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        setSyncData(data.data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    checkApiStatus();
+    fetchSyncStatus();
+  }, []);
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold text-[#4e73df] mb-6">⚙️ Pengaturan</h2>
+
+      {/* API Status Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <FaChartPie className="text-[#4e73df]" />
+          Status Koneksi API
+        </h3>
+
+        <div className={`p-4 rounded-lg mb-4 ${
+          apiStatus === 'connected' ? 'bg-green-50 border border-green-200' : 
+          apiStatus === 'error' ? 'bg-red-50 border border-red-200' : 
+          'bg-yellow-50 border border-yellow-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${
+              apiStatus === 'connected' ? 'bg-green-500' : 
+              apiStatus === 'error' ? 'bg-red-500' : 
+              'bg-yellow-500 animate-pulse'
+            }`}></div>
+            <div>
+              <p className="text-sm font-medium">
+                {apiStatus === 'connected' && '✅ API Terhubung'}
+                {apiStatus === 'error' && '❌ API Tidak Terhubung'}
+                {apiStatus === 'checking' && '⏳ Memeriksa koneksi...'}
+              </p>
+              {lastCheck && apiStatus === 'connected' && (
+                <p className="text-xs text-gray-500 mt-1">Terakhir dicek: {lastCheck}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={checkApiStatus}
+          disabled={apiStatus === 'checking'}
+          className="bg-[#4e73df] hover:bg-[#2e59d9] text-white font-bold px-4 py-2 rounded text-sm disabled:opacity-50"
+        >
+          🔄 Cek Ulang Koneksi
+        </button>
+      </div>
+
+      {/* Auto Sync Status Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+          <FaClock className="text-[#1cc88a]" />
+          Status Auto Sync e-Berpadu
+        </h3>
+
+        {syncData?.last_sync ? (
+          <>
+            <div className={`p-4 rounded-lg mb-4 ${
+              syncData.last_result === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <p className="text-sm font-medium">
+                {syncData.last_result === 'success' ? '✅ Sync Terakhir Berhasil' : '❌ Sync Terakhir Gagal'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Waktu: {syncData.last_sync}</p>
+              {syncData.error_message && (
+                <p className="text-xs text-red-600 mt-1">Error: {syncData.error_message}</p>
+              )}
+            </div>
+
+            {syncData.stats && (
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-gray-50 p-3 rounded-lg text-center border">
+                  <p className="text-2xl font-bold text-gray-700">{syncData.stats.total}</p>
+                  <p className="text-xs text-gray-500">Total Data</p>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg text-center border border-green-200">
+                  <p className="text-2xl font-bold text-green-600">{syncData.stats.created}</p>
+                  <p className="text-xs text-gray-500">Data Baru</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200">
+                  <p className="text-2xl font-bold text-blue-600">{syncData.stats.updated}</p>
+                  <p className="text-xs text-gray-500">Diupdate</p>
+                </div>
+                <div className="bg-red-50 p-3 rounded-lg text-center border border-red-200">
+                  <p className="text-2xl font-bold text-red-600">{syncData.stats.failed}</p>
+                  <p className="text-xs text-gray-500">Gagal</p>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+            <p className="text-sm text-gray-500">Belum ada data sync. Auto sync akan berjalan sesuai jadwal Task Scheduler.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 6. ROOT APP
 // ==========================================
 function App() {
   return (
@@ -795,6 +953,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/input/:id" element={<InputDetail />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
     </Router>
